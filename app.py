@@ -1,46 +1,33 @@
-import os
-import gdown
-
-MODEL_PATH = "crop_model_final.keras"
-
-if not os.path.exists(MODEL_PATH):
-    url = "https://drive.google.com/uc?id=131Ojm_gFajF-WEjD9fIxno8oFPGJFLbv"
-    gdown.download(url, MODEL_PATH, quiet=False)
-
 from flask import Flask, request, jsonify
-import tensorflow as tf
+from tensorflow import keras
 import numpy as np
 from PIL import Image
 import json
 
 app = Flask(__name__)
 
-model = tf.keras.models.load_model("crop_model_final.keras")
+model = keras.models.load_model("final_model_fast.h5")
 
 with open("class_names.json") as f:
     class_names = json.load(f)
 
-def preprocess(image):
-    image = image.resize((160,160))
-    image = np.array(image) / 255.0
-    image = np.expand_dims(image, axis=0)
-    return image
+def predict_image(img):
+    img = img.resize((96, 96))
+    img = np.array(img) / 255.0
+    img = np.expand_dims(img, axis=0)
+
+    pred = model.predict(img)
+    index = np.argmax(pred)
+
+    return class_names[index]
 
 @app.route("/predict", methods=["POST"])
 def predict():
     file = request.files["image"]
-    image = Image.open(file)
+    img = Image.open(file.stream)
 
-    img = preprocess(image)
-    preds = model.predict(img)
+    result = predict_image(img)
 
-    class_id = int(np.argmax(preds))
-    confidence = float(np.max(preds))
+    return jsonify({"result": result})
 
-    return jsonify({
-        "disease": class_names[class_id],
-        "confidence": confidence
-    })
-
-if __name__ == "__main__":
-    app.run()
+app.run(host="0.0.0.0", port=10000)
