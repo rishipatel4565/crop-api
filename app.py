@@ -3,6 +3,7 @@ from tensorflow import keras
 import numpy as np
 from PIL import Image
 import json
+import os
 
 app = Flask(__name__)
 
@@ -30,4 +31,6 @@ def predict():
 
     return jsonify({"result": result})
 
-app.run(host="0.0.0.0", port=10000)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
