@@ -6,20 +6,29 @@ import json
 
 app = Flask(__name__)
 
-# ==============================
-# 🔹 Load model once at startup
-# ==============================
-model = keras.models.load_model("final_model_fast.h5")
+model = None   # 🔥 initially empty
 
-# Load class names
 with open("class_names.json") as f:
     class_names = json.load(f)
+
+
+# ==============================
+# 🔹 Load model ONLY when needed
+# ==============================
+def get_model():
+    global model
+    if model is None:
+        print("Loading model...")
+        model = keras.models.load_model("final_model_fast.h5")
+    return model
 
 
 # ==============================
 # 🔹 Prediction function
 # ==============================
 def predict_image(img):
+    model = get_model()
+
     img = img.resize((96, 96))
     img = np.array(img) / 255.0
     img = np.expand_dims(img, axis=0)
@@ -32,8 +41,14 @@ def predict_image(img):
 
 
 # ==============================
-# 🔹 API route
+# 🔹 Routes
 # ==============================
+
+@app.route("/")
+def home():
+    return "API running ✅"
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     if "image" not in request.files:
@@ -48,11 +63,3 @@ def predict():
         "result": label,
         "confidence": confidence
     })
-
-
-# ==============================
-# 🔹 Health check (IMPORTANT)
-# ==============================
-@app.route("/", methods=["GET"])
-def home():
-    return "API is running ✅"
